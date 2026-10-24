@@ -29,7 +29,7 @@ BOOL APIENTRY dll_main(const HMODULE hModule, const DWORD ul_reason_for_call, LP
 // NOLINTNEXTLINE(readability-identifier-naming)
 extern "C" __declspec(dllexport) AddonDefinition *GetAddonDef()
 {
-    addon_def.Signature = -20251025; /* 汉化版独立签名（非 Raidcore，用唯一负数），避免与原版插件冲突 */
+    addon_def.Signature = -26102501; /* 汉化版独立签名（非 Raidcore，用唯一负数），避免与原版插件冲突 */
     addon_def.APIVersion = NEXUS_API_VERSION;
     addon_def.Name = "App Launcher CN";
     addon_def.Version.Major = 0;

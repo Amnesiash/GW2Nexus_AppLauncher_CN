@@ -29,21 +29,20 @@ BOOL APIENTRY dll_main(const HMODULE hModule, const DWORD ul_reason_for_call, LP
 // NOLINTNEXTLINE(readability-identifier-naming)
 extern "C" __declspec(dllexport) AddonDefinition *GetAddonDef()
 {
-    addon_def.Signature = 3382683172;
+    addon_def.Signature = -20251025; /* 汉化版独立签名（非 Raidcore，用唯一负数），避免与原版插件冲突 */
     addon_def.APIVersion = NEXUS_API_VERSION;
-    addon_def.Name = "App Launcher";
+    addon_def.Name = "App Launcher CN";
     addon_def.Version.Major = 0;
     addon_def.Version.Minor = 5;
     addon_def.Version.Build = 2;
     addon_def.Version.Revision = 0;
-    addon_def.Author = "Seres67";
-    addon_def.Description = "An addon that launches other programs when you launch the game.";
+    addon_def.Author = "Seres67、vaon";
+    addon_def.Description = "一款可以在进入游戏时启动、退出游戏时停止其他程序的插件";
     addon_def.Load = addon_load;
     addon_def.Unload = addon_unload;
     addon_def.Flags = EAddonFlags_None;
-    addon_def.Provider = EUpdateProvider_Direct;
-    addon_def.UpdateLink =
-        "https://git.seres.eu.org/seres/nexus_app_launcher/releases/download/latest/libnexus_app_launcher.dll";
+    addon_def.Provider = EUpdateProvider_None; /* 不参与自动更新，防止被原版 dll 覆盖 */
+    addon_def.UpdateLink = "";
 
     return &addon_def;
 }
@@ -99,7 +98,7 @@ void addon_load(AddonAPI *api_p)
     api->Renderer.Register(ERenderType_OptionsRender, addon_options);
     api->WndProc.Register(wnd_proc);
 
-    Settings::settings_path = api->Paths.GetAddonDirectory("app_launcher/settings.json");
+    Settings::settings_path = api->Paths.GetAddonDirectory("app_launcher_cn/settings.json");
     if (std::filesystem::exists(Settings::settings_path)) {
         Settings::load(Settings::settings_path);
     } else {

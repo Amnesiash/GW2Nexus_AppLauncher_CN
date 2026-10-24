@@ -1,6 +1,6 @@
 #include "globals.hpp"
 
-const char addon_name[] = "App Launcher";
+const char addon_name[] = "App Launcher CN";
 HMODULE self_module = nullptr;
 AddonDefinition addon_def{};
 AddonAPI *api = nullptr;

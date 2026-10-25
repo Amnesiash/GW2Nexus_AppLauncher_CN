@@ -18,7 +18,8 @@ include_directories(include)
 # load imgui as a cmake project
 add_subdirectory(src/imgui)
 
-add_library(nexus_app_launcher SHARED src/main.cpp src/globals.cpp src/gui.cpp src/settings.cpp)
+add_library(nexus_app_launcher SHARED src/main.cpp src/globals.cpp src/gui.cpp src/settings.cpp
+                                     src/localization.cpp)
 target_link_libraries(nexus_app_launcher imgui)
 # 界面文案包含简体中文：源文件为 UTF-8，且执行字符集也需按 UTF-8 编码
 # (MSVC: /utf-8；MinGW/Clang: -finput-charset/-fexec-charset)

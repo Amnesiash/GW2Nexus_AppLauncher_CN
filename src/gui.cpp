@@ -3,13 +3,28 @@
 #include <globals.hpp>
 #include <gui.hpp>
 #include <imgui/imgui.h>
+#include <localization.hpp>
 #include <settings.hpp>
+#include <string>
 #include <tchar.h>
 #include <thread>
 
+// 取当前语言译文（Nexus 未提供该语言译文时返回标识符本身作为兜底）
+static const char *TR(const char *aIdentifier)
+{
+    return api != nullptr ? api->Localization.Translate(aIdentifier) : aIdentifier;
+}
+
+// 拼接"译文##控件ID"，使 ImGui 控件标识稳定（不受语言切换影响）
+static std::string TRW(const char *aIdentifier, const char *aWidgetId)
+{
+    return std::string(TR(aIdentifier)) + "##" + aWidgetId;
+}
+
 void display_kill_processes_on_close_option()
 {
-    if (ImGui::Checkbox("关闭游戏时结束进程##Widget", &Settings::kill_processes_on_close)) {
+    if (ImGui::Checkbox(TRW(AL_OPT_KILL_ON_CLOSE, "Widget").c_str(),
+                        &Settings::kill_processes_on_close)) {
         Settings::json_settings[Settings::KILL_PROCESSES_ON_CLOSE] = Settings::kill_processes_on_close;
         Settings::save(Settings::settings_path);
     }
@@ -20,12 +35,16 @@ void display_start_programs_option()
     for (auto i = 0; i < Settings::start_programs_path.size(); i++) {
         ImGui::PushID(i);
         if (edit_program == i) {
-            ImGui::Checkbox("游戏退出时启动##AppLauncherStartProgramOnExit", &edit_start_on_exit);
-            ImGui::InputText("程序路径##AppLauncherProgramPathInput", edit_program_path, 256);
-            ImGui::InputText("程序工作目录##AppLauncherProgramWorkingDirectoryInput",
-                             edit_program_working_dir, 256);
-            ImGui::InputText("程序启动参数##AppLauncherProgramArgumentsInput", edit_program_arguments, 256);
-            if (ImGui::Button("确认##AppLauncherConfirmButton")) {
+            ImGui::Checkbox(TRW(AL_OPT_START_ON_GAME_EXIT, "AppLauncherStartProgramOnExit").c_str(),
+                            &edit_start_on_exit);
+            ImGui::InputText(TRW(AL_LBL_PROGRAM_PATH, "AppLauncherProgramPathInput").c_str(),
+                             edit_program_path, 256);
+            ImGui::InputText(
+                TRW(AL_LBL_WORKING_DIR, "AppLauncherProgramWorkingDirectoryInput").c_str(),
+                edit_program_working_dir, 256);
+            ImGui::InputText(TRW(AL_LBL_ARGUMENTS, "AppLauncherProgramArgumentsInput").c_str(),
+                             edit_program_arguments, 256);
+            if (ImGui::Button(TRW(AL_BTN_CONFIRM, "AppLauncherConfirmButton").c_str())) {
                 if (edit_start_on_exit) {
                     program_to_swap = i;
                 }
@@ -43,7 +62,7 @@ void display_start_programs_option()
                     kill_process(i);
             }
             ImGui::SameLine();
-            if (ImGui::Button("取消##AppLauncherCancelButton")) {
+            if (ImGui::Button(TRW(AL_BTN_CANCEL, "AppLauncherCancelButton").c_str())) {
                 memset(edit_program_path, 0, 256);
                 memset(edit_program_working_dir, 0, 256);
                 memset(edit_program_arguments, 0, 256);
@@ -53,27 +72,28 @@ void display_start_programs_option()
         } else {
             if (std::filesystem::exists(Settings::start_programs_path[i].path)) {
                 ImGui::Text("%s", Settings::start_programs_path[i].path.c_str());
-                ImGui::Text("工作目录：%s", Settings::start_programs_path[i].working_dir.c_str());
-                ImGui::Text("启动参数：%s", Settings::start_programs_path[i].arguments.c_str());
+                ImGui::Text(TR(AL_TXT_WORKING_DIR), Settings::start_programs_path[i].working_dir.c_str());
+                ImGui::Text(TR(AL_TXT_ARGUMENTS), Settings::start_programs_path[i].arguments.c_str());
             } else {
                 ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", Settings::start_programs_path[i].path.c_str());
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("路径不存在。");
+                    ImGui::SetTooltip("%s", TR(AL_TIP_PATH_NOT_EXIST));
                 }
-                ImGui::TextColored(ImVec4(1, 0, 0, 1), "工作目录：%s",
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), TR(AL_TXT_WORKING_DIR),
                                    Settings::start_programs_path[i].working_dir.c_str());
-                ImGui::TextColored(ImVec4(1, 0, 0, 1), "启动参数：%s",
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), TR(AL_TXT_ARGUMENTS),
                                    Settings::start_programs_path[i].arguments.c_str());
             }
         }
-        if (edit_program == -1 && ImGui::Button("编辑##AppLauncherEditStartProgram")) {
+        if (edit_program == -1 &&
+            ImGui::Button(TRW(AL_BTN_EDIT, "AppLauncherEditStartProgram").c_str())) {
             edit_program = i;
             strcpy_s(edit_program_path, Settings::start_programs_path[i].path.c_str());
             strcpy_s(edit_program_working_dir, Settings::start_programs_path[i].working_dir.c_str());
             strcpy_s(edit_program_arguments, Settings::start_programs_path[i].arguments.c_str());
         }
         ImGui::SameLine();
-        if (ImGui::Button("删除##AppLauncherDeleteStartProgram")) {
+        if (ImGui::Button(TRW(AL_BTN_DELETE, "AppLauncherDeleteStartProgram").c_str())) {
             if (Settings::kill_processes_on_close && processes.size() > i)
                 kill_process(i);
             Settings::remove_start_program(i);
@@ -81,7 +101,7 @@ void display_start_programs_option()
             continue;
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("从列表中移除该程序；若启用了“关闭游戏时结束进程”，将同时结束该进程。");
+            ImGui::SetTooltip("%s", TR(AL_TIP_REMOVE_PROGRAM));
         }
         ImGui::NewLine();
         ImGui::PopID();
@@ -105,12 +125,16 @@ void display_exit_programs_option()
     for (auto i = 0; i < Settings::exit_programs_path.size(); i++) {
         ImGui::PushID(("exit" + std::to_string(i)).c_str());
         if (edit_exit_program == i) {
-            ImGui::Checkbox("游戏退出时启动##AppLauncherStartProgramOnExit", &edit_exit_start_on_exit);
-            ImGui::InputText("程序路径##AppLauncherProgramPathInput", edit_program_path, 256);
-            ImGui::InputText("程序工作目录##AppLauncherProgramWorkingDirectoryInput",
-                             edit_program_working_dir, 256);
-            ImGui::InputText("程序启动参数##AppLauncherProgramArgumentsInput", edit_program_arguments, 256);
-            if (ImGui::Button("确认##AppLauncherConfirmButton")) {
+            ImGui::Checkbox(TRW(AL_OPT_START_ON_GAME_EXIT, "AppLauncherStartProgramOnExit").c_str(),
+                            &edit_exit_start_on_exit);
+            ImGui::InputText(TRW(AL_LBL_PROGRAM_PATH, "AppLauncherProgramPathInput").c_str(),
+                             edit_program_path, 256);
+            ImGui::InputText(
+                TRW(AL_LBL_WORKING_DIR, "AppLauncherProgramWorkingDirectoryInput").c_str(),
+                edit_program_working_dir, 256);
+            ImGui::InputText(TRW(AL_LBL_ARGUMENTS, "AppLauncherProgramArgumentsInput").c_str(),
+                             edit_program_arguments, 256);
+            if (ImGui::Button(TRW(AL_BTN_CONFIRM, "AppLauncherConfirmButton").c_str())) {
                 if (!edit_exit_start_on_exit) {
                     program_to_swap = i;
                 }
@@ -126,7 +150,7 @@ void display_exit_programs_option()
                 edit_exit_program = -1;
             }
             ImGui::SameLine();
-            if (ImGui::Button("取消##AppLauncherCancelButton")) {
+            if (ImGui::Button(TRW(AL_BTN_CANCEL, "AppLauncherCancelButton").c_str())) {
                 memset(edit_program_path, 0, 256);
                 memset(edit_program_working_dir, 0, 256);
                 memset(edit_program_arguments, 0, 256);
@@ -136,27 +160,28 @@ void display_exit_programs_option()
         } else {
             if (std::filesystem::exists(Settings::exit_programs_path[i].path)) {
                 ImGui::Text("%s", Settings::exit_programs_path[i].path.c_str());
-                ImGui::Text("工作目录：%s", Settings::exit_programs_path[i].working_dir.c_str());
-                ImGui::Text("启动参数：%s", Settings::exit_programs_path[i].arguments.c_str());
+                ImGui::Text(TR(AL_TXT_WORKING_DIR), Settings::exit_programs_path[i].working_dir.c_str());
+                ImGui::Text(TR(AL_TXT_ARGUMENTS), Settings::exit_programs_path[i].arguments.c_str());
             } else {
                 ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", Settings::exit_programs_path[i].path.c_str());
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("路径不存在。");
+                    ImGui::SetTooltip("%s", TR(AL_TIP_PATH_NOT_EXIST));
                 }
-                ImGui::TextColored(ImVec4(1, 0, 0, 1), "工作目录：%s",
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), TR(AL_TXT_WORKING_DIR),
                                    Settings::exit_programs_path[i].working_dir.c_str());
-                ImGui::TextColored(ImVec4(1, 0, 0, 1), "启动参数：%s",
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), TR(AL_TXT_ARGUMENTS),
                                    Settings::exit_programs_path[i].arguments.c_str());
             }
         }
-        if (edit_exit_program == -1 && ImGui::Button("编辑##AppLauncherEditExitProgram")) {
+        if (edit_exit_program == -1 &&
+            ImGui::Button(TRW(AL_BTN_EDIT, "AppLauncherEditExitProgram").c_str())) {
             edit_exit_program = i;
             strcpy_s(edit_program_path, Settings::exit_programs_path[i].path.c_str());
             strcpy_s(edit_program_working_dir, Settings::exit_programs_path[i].working_dir.c_str());
             strcpy_s(edit_program_arguments, Settings::exit_programs_path[i].arguments.c_str());
         }
         ImGui::SameLine();
-        if (ImGui::Button("删除##AppLauncherDeleteExitProgram")) {
+        if (ImGui::Button(TRW(AL_BTN_DELETE, "AppLauncherDeleteExitProgram").c_str())) {
             Settings::remove_exit_program(i);
             edit_exit_program = -1;
             continue;
@@ -233,7 +258,7 @@ std::string get_file_path()
 
 void display_add_program_option()
 {
-    if (ImGui::Button("打开文件选择器##AppLauncherOpenFilePickerButton")) {
+    if (ImGui::Button(TRW(AL_OPT_OPEN_PICKER, "AppLauncherOpenFilePickerButton").c_str())) {
         std::string file_path = get_file_path();
         if (!file_path.empty()) {
             strcpy_s(new_program, file_path.c_str());
@@ -245,12 +270,13 @@ void display_add_program_option()
         }
     }
     ImGui::NewLine();
-    ImGui::Checkbox("游戏关闭时启动程序##AppLauncherStartOnExit", &start_on_exit);
-    ImGui::InputText("程序路径##AppLauncherProgramPathInput", new_program, 256);
-    ImGui::InputText("程序工作目录##AppLauncherProgramWorkingDirectory", new_program_working_directory,
+    ImGui::Checkbox(TRW(AL_OPT_START_ON_EXIT, "AppLauncherStartOnExit").c_str(), &start_on_exit);
+    ImGui::InputText(TRW(AL_LBL_PROGRAM_PATH, "AppLauncherProgramPathInput").c_str(), new_program, 256);
+    ImGui::InputText(TRW(AL_LBL_WORKING_DIR, "AppLauncherProgramWorkingDirectory").c_str(),
+                     new_program_working_directory, 256);
+    ImGui::InputText(TRW(AL_LBL_ARGUMENTS, "AppLauncherProgramArgumentsInput").c_str(), new_arguments,
                      256);
-    ImGui::InputText("程序启动参数##AppLauncherProgramArgumentsInput", new_arguments, 256);
-    if (ImGui::Button("添加程序##AppLauncherAddProgramButton")) {
+    if (ImGui::Button(TRW(AL_BTN_ADD, "AppLauncherAddProgramButton").c_str())) {
         std::string program(new_program);
         if (program.empty())
             return;
@@ -280,7 +306,7 @@ void display_add_program_option()
     }
     if (!is_program_valid) {
         ImGui::SameLine();
-        ImGui::Text("路径必须指向可执行文件（.exe）。");
+        ImGui::Text("%s", TR(AL_ERR_NOT_EXECUTABLE));
     }
 }
 
@@ -296,8 +322,8 @@ void create_process(const std::string &path, const std::string &working_dir, con
         last_slash = path.find_last_of('\\');
     const std::string &working_directory = path.substr(0, last_slash);
     api->Log(ELogLevel_DEBUG, addon_name, working_directory.c_str());
-    CreateProcessA(path.c_str(), const_cast<char *>(cmd.c_str()), nullptr, nullptr, false, DETACHED_PROCESS, nullptr,
-                   working_dir.c_str(), &processes.back().si, &processes.back().pi);
+    CreateProcessA(path.c_str(), const_cast<char *>(cmd.c_str()), nullptr, nullptr, false, DETACHED_PROCESS,
+                   nullptr, working_dir.c_str(), &processes.back().si, &processes.back().pi);
 }
 
 void addon_render()
@@ -319,13 +345,13 @@ void addon_render()
 void addon_options()
 {
     display_kill_processes_on_close_option();
-    if (ImGui::CollapsingHeader("游戏启动时启动的程序")) {
+    if (ImGui::CollapsingHeader(TRW(AL_OPT_START_HEADER, "AppLauncherStartProgramsHeader").c_str())) {
         display_start_programs_option();
     }
-    if (ImGui::CollapsingHeader("游戏关闭时启动的程序")) {
+    if (ImGui::CollapsingHeader(TRW(AL_OPT_EXIT_HEADER, "AppLauncherExitProgramsHeader").c_str())) {
         display_exit_programs_option();
     }
-    if (ImGui::CollapsingHeader("添加程序##AppLauncherAddProgramHeader")) {
+    if (ImGui::CollapsingHeader(TRW(AL_OPT_ADD_HEADER, "AppLauncherAddProgramHeader").c_str())) {
         display_add_program_option();
     }
 }

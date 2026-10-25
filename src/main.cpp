@@ -2,6 +2,7 @@
 #include <gui.hpp>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
+#include <localization.hpp>
 #include <nexus/Nexus.h>
 #include <settings.hpp>
 #include <string>
@@ -97,6 +98,9 @@ void addon_load(AddonAPI *api_p)
     api->Renderer.Register(ERenderType_Render, addon_render);
     api->Renderer.Register(ERenderType_OptionsRender, addon_options);
     api->WndProc.Register(wnd_proc);
+
+    // 注册多语言文案，使 UI 跟随 Nexus 当前界面语言
+    register_localization();
 
     Settings::settings_path = api->Paths.GetAddonDirectory("app_launcher_cn/settings.json");
     if (std::filesystem::exists(Settings::settings_path)) {
